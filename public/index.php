@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Doctrine\AutomaticReleases\WebApplication;
 
+use Doctrine\AutomaticReleases\CreateProcess;
 use Doctrine\AutomaticReleases\Environment\Variables;
 use Doctrine\AutomaticReleases\Github\HandleMilestoneClosedEvent;
 use Doctrine\AutomaticReleases\Github\ReleaseMilestone;
@@ -29,6 +30,8 @@ use function set_error_handler;
     $request     = ServerRequestFactory::fromGlobals();
     $environment = Variables::fromEnvironment();
 
+    $createProcess = new CreateProcess();
+
     $milestone = (new HandleMilestoneClosedEvent())
         ->__invoke($request, $environment);
 
@@ -38,7 +41,7 @@ use function set_error_handler;
         return;
     }
 
-    $releaseUrl = (new ReleaseMilestone())
+    $releaseUrl = (new ReleaseMilestone($createProcess))
         ->__invoke($environment, $milestone, $buildDir);
 
     echo 'Released: ' . $releaseUrl->__toString();

@@ -11,9 +11,7 @@ use Doctrine\AutomaticReleases\Github\Api\GraphQL\Query\GetMilestoneChangelog;
 use Doctrine\AutomaticReleases\Github\Api\GraphQL\RunGraphQLQuery;
 use Doctrine\AutomaticReleases\Github\Api\V3\CreatePullRequest;
 use Doctrine\AutomaticReleases\Github\Api\V3\CreateRelease;
-use Doctrine\AutomaticReleases\Github\CreateChangelogText;
 use Doctrine\AutomaticReleases\Github\Event\MilestoneClosedEvent;
-use Doctrine\AutomaticReleases\Github\JwageGenerateChangelog;
 use Doctrine\AutomaticReleases\Github\Value\RepositoryName;
 use Doctrine\AutomaticReleases\Gpg;
 use Http\Discovery\HttpClientDiscovery;
@@ -25,6 +23,20 @@ use function uniqid;
 
 final class ReleaseMilestone
 {
+    /**
+     * @var callable
+     * @psalm-var callable(array, string|null=):\Symfony\Component\Process\Process
+     */
+    private $createProcess;
+
+    /**
+     * @psalm-param callable(array, string|null=):\Symfony\Component\Process\Process $createProcess
+     */
+    public function __construct(callable $createProcess)
+    {
+        $this->createProcess = $createProcess;
+    }
+
     public function __invoke(
         Variables $environment,
         MilestoneClosedEvent $milestone,
@@ -88,12 +100,12 @@ final class ReleaseMilestone
 
         $mergeUpBranch = $this->buildMergeUpBranchName($releaseBranch, $mergeUpTarget);
 
-        (new Git\Push())->__invoke(
+        (new Git\Push($this->createProcess))->__invoke(
             $releasedRepositoryLocalPath,
             $tagName
         );
 
-        (new Git\Push())->__invoke(
+        (new Git\Push($this->createProcess))->__invoke(
             $releasedRepositoryLocalPath,
             $releaseBranch->name(),
             $mergeUpBranch->name()
